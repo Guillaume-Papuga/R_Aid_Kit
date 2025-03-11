@@ -9,22 +9,190 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+```{r packages, include=FALSE}
+# Packages
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+library(here)
+library(ggplot2)
+library(dplyr)
+library(ggeffects)
+library(lmtest)
+```
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+```{r data, include = FALSE}
+# A. Jeu de données floristique (sample)
+data.flo = read.csv (here::here("25.flore glaciers_Lucie Bivaud", "data", "data_Lucie_sample.csv"), 
+                     sep = ";")
+
+# Modifier les noms de colonne
+
+# B. Jeu de données théorique
+
+# Set seed for reproducibility
+set.seed(42)
+
+# Simuler les données
+n <- 10  # Nombre de réplicats
+countries <- c("Bolivie", "Perou", "France")
+chronosequences <- c("Jeune", "Vieux")
+plants <- c("A", "B", "C", "D", "E")
+plant_sizes <- runif(5, 0.25, 1)  # Taille entre 0.25m² et 1m²
+
+# Générer toutes les combinaisons possibles
+country_seq <- rep(countries, length(chronosequences) * length(plants) * n)
+chronosequence_seq <- rep(rep(chronosequences, length(plants) * n), length(countries))
+plant_seq <- rep(rep(plants, n), length(countries) * length(chronosequences))
+size_seq <- rep(rep(plant_sizes, n), length(countries) * length(chronosequences))
+
+# Générer la variable de réponse RII (distribuée normalement)
+rii <- rnorm(length(country_seq), mean = 0, sd = 1)
+
+# Créer le dataframe
+data_test <- data.frame(
+  Pays = country_seq,
+  Chronosequence = chronosequence_seq,
+  Plante = plant_seq,
+  Taille = size_seq,
+  RII = rii
+)
+
+# Convertir les variables catégorielles en facteurs
+data_test$Pays <- factor(data_test$Pays)
+data_test$Chronosequence <- factor(data_test$Chronosequence)
+data_test$Plante <- factor(data_test$Plante)
+
+```
+
+
+## Data mining : graphiques simples
+
+Ici on présente les graphiques les plus simples pour comprendre la structure du jeu de données
 
 ```{r cars}
 summary(cars)
 ```
 
-## Including Plots
+### Multicolinéarité
+Analyser la multicollinearité en amont dans le jeu de données.
+```{r}
+# mat_multico = 
+# pairs (mat_multico)
+```
+Selection de variables? 
 
-You can also embed plots, for example:
+## Modèle linéaire simple
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+### Conditions d'utilisation
+Avant de fitter le modèle, on vérifie les conditions d'utilisation. 
+Vérification des hypothèses du modèle linéaire :
+
+### Paramétrage du modèle
+
+On commence la modélisation avec un lm() simple. 
+Ce modèle est fitté comme ceci : FORMULE
+
+Expliquer la structure de dépendance
+
+```{r, echo=FALSE}
+# Ajuster le modèle linéaire
+model <- lm(RII ~ Taille + Pays + Chronosequence + Plante, data = data_test)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+#### Linéarité
+Assurer que la relation entre les variables explicatives et la variable dépendante est linéaire. Plot des résidus vs les valeurs ajustées : Si le modèle est bien linéaire, les résidus devraient être répartis aléatoirement autour de zéro, sans structure évidente.
+```{r}
+# Tracer les résidus vs les valeurs ajustées
+plot(model, which = 1)  # Graphique de la linéarité (résidus vs ajustés)
+```
+
+
+#### Indépendance
+Plot des résidus vs ordre des observations : Si les observations sont indépendantes, les résidus ne devraient pas montrer de structure temporelle ou ordonnée.
+```{r}
+# Tracer les résidus en fonction de l'ordre des observations
+plot(model, which = 3)  # Graphique des résidus dans l'ordre
+```
+
+
+#### Homoscedasticité 
+Vérifier que la variance des erreurs est constante à travers les valeurs ajustées. 
+
+Test graphique : Graphique des résidus vs valeurs ajustées (Les résidus devraient être aléatoires, sans tendance claire, et distribués autour de zéro avec une variance constante)
+
+Test statistique : Le test de Breusch-Pagan
+```{r}
+bptest(model)  # Test de Breusch-Pagan pour l'homoscedasticité
+```
+
+
+
+
+#### Normalité des résidus 
+Vérifier que les résidus du modèle suivent une distribution normale.
+Test graphique : QQ-plot des résidus : Le QQ-plot compare les quantiles des résidus à ceux d'une distribution normale. Si les points suivent une droite, cela suggère que les résidus sont normalement distribués.
+```{r}
+# Tracer le QQ-plot des résidus
+plot(model, which = 2)  # Graphique QQ-plot
+```
+
+Test statistique : Test de Shapiro-Wilk : Ce test évalue si les résidus suivent une distribution normale. Une p-value inférieure à 0.05 indique que les résidus ne suivent pas une distribution normale.
+
+
+```{r}
+# Test de normalité de Shapiro-Wilk
+shapiro.test(residuals(model))
+```
+
+
+### Analyse de la sortie
+```{r}
+# Résumé du modèle
+summary(model)
+```
+
+Vérifier les coefficients : Interpréter les coefficients pour chaque variable (comment chaque facteur affecte RII).
+
+Valeurs p : Vérifier les valeurs p pour déterminer si les variables explicatives sont significativement associées à la variable cible.
+
+
+R² ajusté : Vérifier l'ajustement du modèle.
+
+
+### Plot des effets 
+
+```{r}
+# Variable : Taille
+
+# Effet global
+ggplot(data_test, aes(x = Taille, y = RII)) + 
+  geom_point() + 
+  geom_smooth(method = "lm", col = "red") + 
+  ggtitle("Effect global - Taille")
+
+# Effet marginal
+effects <- ggpredict(model, terms = "Taille")  # Effet de x1
+plot(effects)
+```
+
+
+```{r}
+# Variable : Pays
+
+# Effet global
+ggplot(data_test, aes(x = Pays, y = RII)) + 
+  geom_point() + 
+  geom_smooth(method = "lm", col = "red") + 
+  ggtitle("Effect global - Pays")
+
+# Effet marginal
+effects <- ggpredict(model, terms = "Pays")  # Effet de x1
+plot(effects)
+```
+
+
+```{r}
+
+```
+
+
+
