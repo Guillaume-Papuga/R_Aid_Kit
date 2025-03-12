@@ -82,10 +82,6 @@ Selection de variables?
 
 ## Modèle linéaire simple
 
-### Conditions d'utilisation
-Avant de fitter le modèle, on vérifie les conditions d'utilisation. 
-Vérification des hypothèses du modèle linéaire :
-
 ### Paramétrage du modèle
 
 On commence la modélisation avec un lm() simple. 
@@ -97,6 +93,12 @@ Expliquer la structure de dépendance
 # Ajuster le modèle linéaire
 model <- lm(RII ~ Taille + Pays + Chronosequence + Plante, data = data_test)
 ```
+
+Reflechir si on doit spécifier des contrastes!
+
+### Conditions d'utilisation
+Avant de fitter le modèle, on vérifie les conditions d'utilisation. 
+Vérification des hypothèses du modèle linéaire :
 
 #### Linéarité
 Assurer que la relation entre les variables explicatives et la variable dépendante est linéaire. Plot des résidus vs les valeurs ajustées : Si le modèle est bien linéaire, les résidus devraient être répartis aléatoirement autour de zéro, sans structure évidente.
